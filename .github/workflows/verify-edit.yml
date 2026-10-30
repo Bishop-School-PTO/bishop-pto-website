@@ -1,0 +1,24 @@
+name: Verify Edit Mode signature
+
+# pull_request_target runs this workflow (and script) from the base branch, so a PR can't alter
+# its own verification. The PR's code is never checked out or executed.
+on:
+  pull_request_target:
+    types: [opened, edited, reopened, synchronize]
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - run: node .github/scripts/verify-edit.mjs
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}

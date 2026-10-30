@@ -1,0 +1,146 @@
+name: Deploy site and PR previews
+
+# Publishes the default branch at / and trusted open PRs at /pr/<number>/ (see the rule below), then
+# posts each PR's preview link as a comment. The whole site is rebuilt on each event, so closed PRs
+# simply drop out of the next deploy.
+# pull_request_target runs from the base branch (allowed to deploy to the github-pages environment);
+# PR files are only copied as static files — never built or executed.
+on:
+  push:
+    branches: [main]
+  pull_request_target:
+    types: [opened, reopened, synchronize, closed, labeled, unlabeled]
+  workflow_run:  # redeploy once a signature has been verified, so verified PRs get previews
+    workflows: [Verify Edit Mode signature]
+    types: [completed]
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+      issues: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    outputs:
+      page_url: ${{ steps.deployment.outputs.page_url }}
+      built: ${{ steps.assemble.outputs.built }}
+      skipped: ${{ steps.assemble.outputs.skipped }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+
+      - name: Assemble site and previews
+        id: assemble
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          export_tree() {  # export_tree <commit> <dir>: copy a commit's files, minus repo-only folders
+            mkdir -p "$2"
+            git archive "$1" | tar -x -C "$2"
+            rm -rf "$2/.github" "$2/.devcontainer" "$2/.claude" "$2"/.git*
+          }
+
+          export_tree HEAD _site
+          printf '{"sha":"%s"}\n' "$(git rev-parse HEAD)" > _site/version.json
+          : > built.txt
+          : > skipped.txt
+
+          # Previews share the live site's origin, so their scripts must be trusted to the same degree as
+          # the site's. Build one when the PR is (a) a branch pushed by a collaborator (not a bot, not a fork),
+          # (b) labeled "preview" by a maintainer, or (c) signed by a member of the Google Workspace domain,
+          # verified for its exact current commit by verify-edit.yml.
+          gh pr list --repo "$GITHUB_REPOSITORY" --state open --limit 100 \
+            --json number,isCrossRepository,headRefOid,author,labels \
+            --jq '.[] | "\(.number) \(.headRefOid) \((.isCrossRepository | not) and (.author.is_bot | not) or any(.labels[]; .name == "preview"))"' |
+          while read -r number sha trusted; do
+            if [ "$trusted" != true ] && ! gh api "repos/$GITHUB_REPOSITORY/issues/$number/comments" --paginate </dev/null \
+                --jq '.[] | select(.user.login == "github-actions[bot]") | .body' | grep -qF "<!-- verified-sha: $sha -->"; then
+              echo "No preview for #$number: not from a collaborator, not labeled \"preview\", no verified signature for $sha"
+              echo "$number:$sha" >> skipped.txt
+              continue
+            fi
+            git fetch --quiet --depth 1 origin "pull/$number/head" </dev/null
+            export_tree FETCH_HEAD "_site/pr/$number"
+            # Keep previews out of search results.
+            find "_site/pr/$number" -name '*.html' -exec sed -i '0,/<head>/s||<head>\n  <meta name="robots" content="noindex">|' {} +
+            echo "Preview: /pr/$number/"
+            echo "$number:$sha" >> built.txt
+          done
+
+          # Never publish symlinks (they could point at files on the runner).
+          find _site -type l -delete
+          echo "built=$(tr '\n' ' ' < built.txt)" >> "$GITHUB_OUTPUT"
+          echo "skipped=$(tr '\n' ' ' < skipped.txt)" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+      - id: deployment
+        uses: actions/deploy-pages@v4
+
+  # Keeps one comment per PR with its preview link (or why there isn't one). Edits don't notify anyone,
+  # so only the first comment on a PR sends a notification.
+  comment:
+    needs: deploy
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+      issues: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      SITE: ${{ needs.deploy.outputs.page_url }}
+      BUILT: ${{ needs.deploy.outputs.built }}
+      SKIPPED: ${{ needs.deploy.outputs.skipped }}
+      CLOSED_PR: ${{ github.event.action == 'closed' && github.event.pull_request.number || '' }}
+    steps:
+      - name: Post or update preview links
+        run: |
+          set -euo pipefail
+          marker='<!-- site-preview -->'
+          site="${SITE%/}/"
+          upsert() {  # upsert <pr> <text> [update-only]
+            local body id
+            body="$marker"$'\n'"$2"
+            id=$(gh api "repos/$GITHUB_REPOSITORY/issues/$1/comments" --paginate \
+              --jq ".[] | select(.user.login == \"github-actions[bot]\" and (.body | contains(\"$marker\"))) | .id" | head -n 1)
+            if [ -n "$id" ]; then
+              if [ "$(gh api "repos/$GITHUB_REPOSITORY/issues/comments/$id" --jq .body)" != "$body" ]; then
+                gh api -X PATCH "repos/$GITHUB_REPOSITORY/issues/comments/$id" -f body="$body" > /dev/null
+              fi
+            elif [ -z "${3:-}" ]; then
+              gh api "repos/$GITHUB_REPOSITORY/issues/$1/comments" -f body="$body" > /dev/null
+            fi
+          }
+
+          for entry in $BUILT; do
+            number=${entry%%:*} sha=${entry#*:}
+            upsert "$number" "🔎 **Preview:** ${site}pr/$number/
+
+          Built from ${sha:0:7}. It updates when this PR changes and is removed when the PR closes."
+          done
+
+          for entry in $SKIPPED; do
+            number=${entry%%:*} sha=${entry#*:}
+            upsert "$number" "🔒 **No preview yet** for ${sha:0:7}. Previews share the live site's address, so they're only built for collaborators' branches, Edit Mode submissions with a verified Google Workspace signature (the preview appears shortly after verification), or PRs labeled \`preview\`.
+
+          Maintainers: after reviewing the changes, add the \`preview\` label to build one."
+          done
+
+          if [ -n "$CLOSED_PR" ]; then
+            upsert "$CLOSED_PR" "Preview removed — this PR is closed." update-only
+          fi

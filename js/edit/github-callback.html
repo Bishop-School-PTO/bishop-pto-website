@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="robots" content="noindex">
+  <title>Signing in…</title>
+</head>
+<body style="font: 16px system-ui, sans-serif; text-align: center; padding: 48px;">
+  <p>Signed in. You can close this window.</p>
+  <script>
+    // Return point for "Sign in with GitHub" (see signInWithGitHub in submit.js).
+    const params = new URLSearchParams(location.search);
+    new BroadcastChannel('pto-github-signin').postMessage({
+      state: params.get('state'),
+      code: params.get('code'),
+      error: params.get('error'),
+    });
+    setTimeout(() => window.close(), 300);
+  </script>
+</body>
+</html>

@@ -37,6 +37,13 @@ const summarize = (name, args) => {
   return `${name}(${text.length > 140 ? `${text.slice(0, 140)}…` : text})`;
 };
 
+// OpenRouter runs these itself (searching with the model provider's own search when it has one, Exa otherwise);
+// limits keep a request's cost and context size in check.
+const WEB_TOOLS = [
+  { type: 'openrouter:web_search', parameters: { max_results: 5, max_uses: 5 } },
+  { type: 'openrouter:web_fetch', parameters: { max_uses: 5, max_content_tokens: 20000 } },
+];
+
 // Claude models on OpenRouter cache only when asked; other providers cache automatically.
 const explicitCaching = (model) => /^~?anthropic\//.test(model);
 
@@ -55,11 +62,11 @@ export function createAssistant({ tools, system, context, maxSteps = 30 }) {
   return {
     reset() { messages = []; session = crypto.randomUUID(); },
     stop() { controller?.abort(); },
-    async send({ key, model, text, onEvent }) {
+    async send({ key, model, text, web = false, onEvent }) {
       controller = new AbortController();
       const turnStart = messages.length;
       messages.push({ role: 'user', content: `${context()}\n\n${text}` });
-      const usage = { cost: 0, input: 0, cached: 0, steps: 0 };
+      const usage = { cost: 0, input: 0, cached: 0, steps: 0, lookups: 0 };
       try {
         for (let step = 0; step < maxSteps; step++) {
           const data = await call(key, 'chat/completions', {
@@ -68,7 +75,7 @@ export function createAssistant({ tools, system, context, maxSteps = 30 }) {
             body: JSON.stringify({
               model,
               messages: [{ role: 'system', content: system }, ...messages],
-              tools: toolSpecs,
+              tools: web ? [...toolSpecs, ...WEB_TOOLS] : toolSpecs,
               // Keep this chat on the same provider so its cache is reused.
               session_id: session,
               ...(explicitCaching(model) && { cache_control: { type: 'ephemeral' } }),
@@ -78,14 +85,25 @@ export function createAssistant({ tools, system, context, maxSteps = 30 }) {
           usage.cost += data.usage?.cost || 0;
           usage.input += data.usage?.prompt_tokens || 0;
           usage.cached += data.usage?.prompt_tokens_details?.cached_tokens || 0;
+          const server = data.usage?.server_tool_use_details;
+          const lookups = Math.max(server?.web_search_requests || 0, server?.tool_calls_executed || 0);
+          usage.lookups += lookups;
+          if (lookups) onEvent('tool', `web lookup${lookups === 1 ? '' : 's'} ×${lookups}`);
           const choice = data.choices?.[0];
           const message = choice?.message;
           if (!message || choice.finish_reason === 'error') {
             throw new Error(`The model returned no answer (${choice?.error?.message || choice?.finish_reason || 'unknown reason'}).`);
           }
-          // Keep the model's message verbatim (including any reasoning details) for the next request.
-          messages.push(message);
+          // Keep the model's message verbatim (including any reasoning details) for the next request;
+          // citations are only for display.
+          const { annotations, ...reply } = message;
+          messages.push(reply);
           if (message.content) onEvent('assistant', message.content);
+          const sources = new Map();
+          for (const { type, url_citation: c } of annotations || []) {
+            if (type === 'url_citation' && !sources.has(c.url)) sources.set(c.url, { url: c.url, title: c.title || new URL(c.url).hostname });
+          }
+          if (sources.size) onEvent('sources', [...sources.values()]);
           const calls = message.tool_calls || [];
           if (!calls.length) {
             if (!message.content) throw new Error(`The model returned no answer (${choice.finish_reason || 'unknown reason'}).`);

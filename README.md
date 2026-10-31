@@ -51,6 +51,9 @@ resized by dragging its left edge.
   in plain language. The key stays in the browser (session-only unless "Remember on this device" is ticked) and is sent
   only to OpenRouter, which bills the key's owner. Any OpenRouter model that supports tool calling can be picked from the dropdown ("Always the latest" aliases first, with prices); the
   default is `aiModel` in `js/edit/config.json` (`~anthropic/claude-haiku-latest` follows the newest Claude Haiku).
+  "Allow web search" (off by default) lets it look things up and read pages you mention, via OpenRouter's
+  web search and fetch tools (about 1¢ per lookup, at most 5 searches and 5 page reads per request); sources are
+  listed under the reply.
   Each reply shows its approximate cost and how much of the input came from the prompt cache (enabled for Claude
   models; most other providers cache automatically).
 - **Site-wide**: banners, menu & pages (create/delete; menu links are kept in sync on every page), the site's colors,

@@ -74,6 +74,13 @@ async function upsertComment(body) {
   });
 }
 
+// Where pages.yml publishes this PR's preview (it builds one for every verified submission).
+async function previewUrl() {
+  const res = await api('/pages').catch(() => null);
+  const site = res?.ok && (await res.json()).html_url;
+  return site ? `${site.replace(/\/?$/, '/')}pr/${PR_NUMBER}/` : null;
+}
+
 const pr = await (await api(`/pulls/${PR_NUMBER}`)).json();
 const token = [...(pr.body || '').matchAll(/edit-mode-id-token\s+([\w-]+\.[\w-]+\.[\w-]+)/g)].at(-1)?.[1];
 if (!token) {
@@ -87,9 +94,10 @@ try {
   const claims = await verifyGoogleIdToken(token);
   const who = `${claims.name ? `${claims.name} ` : ''}\`${claims.email}\``;
   const signedAt = new Date(claims.iat * 1000).toISOString();
-  message = claims.nonce === (await prContentHash(pr))
-    ? `✅ **Verified Edit Mode submission** by ${who} (Google Workspace \`${claims.hd}\`, signed ${signedAt}).\n\nGoogle's signature was checked against its published keys, and the signed content hash matches this PR's changes at ${pr.head.sha.slice(0, 7)}.\n<!-- verified-sha: ${pr.head.sha} -->`
-    : `⚠️ **Identity verified, content changed.** ${who} (Google Workspace \`${claims.hd}\`) signed this submission at ${signedAt}, but the PR's changes at ${pr.head.sha.slice(0, 7)} no longer match what they signed — commits were added or changed after submission. Review the extra commits separately.`;
+  if (claims.nonce === (await prContentHash(pr))) {
+    const preview = await previewUrl();
+    message = `✅ **Verified Edit Mode submission** by ${who} (Google Workspace \`${claims.hd}\`, signed ${signedAt}).\n\nGoogle's signature was checked against its published keys, and the signed content hash matches this PR's changes at ${pr.head.sha.slice(0, 7)}.${preview ? `\n\n🔎 **Preview:** ${preview} (ready a minute or two after this comment)` : ''}\n<!-- verified-sha: ${pr.head.sha} -->`;
+  } else message = `⚠️ **Identity verified, content changed.** ${who} (Google Workspace \`${claims.hd}\`) signed this submission at ${signedAt}, but the PR's changes at ${pr.head.sha.slice(0, 7)} no longer match what they signed — commits were added or changed after submission. Review the extra commits separately.`;
 } catch (err) {
   if (err instanceof Inconclusive) message = `ℹ️ **Verification inconclusive.** ${err.message}`;
   else { message = `❌ **Not verified:** ${err.message}. Do not trust the claimed author of this PR.`; failed = true; }

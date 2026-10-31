@@ -4,5 +4,6 @@
   "relayUrl": "https://script.google.com/macros/s/AKfycbxVEV1aBj2rOsoxb20Ln9v3UWWdJIUpJHi5y7YSIAePDOJOhsWysMk1cEExakfh_pxl/exec",
   "githubAppClientId": "Iv23lidjDyeS8g1pEc6u",
   "googleClientId": "702328208402-078e8olptkijlei2ocngb5cr7ifkmd3s.apps.googleusercontent.com",
-  "allowedDomain": "bishopschoolpto.com"
+  "allowedDomain": "bishopschoolpto.com",
+  "aiModel": "~anthropic/claude-haiku-latest"
 }

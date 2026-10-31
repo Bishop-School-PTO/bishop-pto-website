@@ -10,6 +10,7 @@ permissions:
   contents: read
   pull-requests: write
   issues: write
+  pages: read  # to look up the site's address for the preview link
 
 jobs:
   verify:

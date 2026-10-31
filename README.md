@@ -12,7 +12,7 @@ until a maintainer merges it on GitHub.
  Browser (Edit Mode)               Relay (Google Apps Script)              GitHub
  ───────────────────               ──────────────────────────              ──────
  edit page / pages / code
- optional AI (user's Gemini key)
+ optional AI (user's OpenRouter key)
  identify yourself:
   • Google, nonce = SHA-256(changes) ─► verify Google token + nonce
   • and/or Sign in with GitHub ──────► read identity, revoke GitHub token,
@@ -29,7 +29,7 @@ until a maintainer merges it on GitHub.
 | --- | --- |
 | `js/script.js` | Site script; also shows PR-preview banners and loads Edit Mode on demand |
 | `js/edit/editor.js` | Edit Mode: editing, pages, colors, source editor, review & submit |
-| `js/edit/ai.js` | Optional Gemini assistant (function calling over the editor's tools) |
+| `js/edit/ai.js` | Optional AI assistant via OpenRouter (tool calling over the editor's tools) |
 | `js/edit/submit.js` | Content hashing, Google Sign-In, Sign in with GitHub, relay calls |
 | `js/edit/github-callback.html` | Return page for the "Sign in with GitHub" popup |
 | `js/edit/config.json` | Settings shared by the browser and the verification Action |
@@ -47,8 +47,12 @@ resized by dragging its left edge.
 - **This page**: click any text and type. The click also selects that block (heading, paragraph, button, link…),
   so you can make text bold/italic/linked, move it, duplicate or delete it, add a new block below, or step out to the
   surrounding card or section. Raw HTML and the page title/description are tucked into collapsible extras.
-- **Ask the assistant** (optional): paste a [Gemini API key](https://aistudio.google.com/apikey) and ask for changes in plain language.
-  The key stays in the browser (session-only unless "Remember on this device" is ticked) and is sent only to Google.
+- **Ask the assistant** (optional): paste an [OpenRouter API key](https://openrouter.ai/settings/keys) and ask for changes
+  in plain language. The key stays in the browser (session-only unless "Remember on this device" is ticked) and is sent
+  only to OpenRouter, which bills the key's owner. Any OpenRouter model that supports tool calling can be picked; the
+  default is `aiModel` in `js/edit/config.json` (`~anthropic/claude-haiku-latest` follows the newest Claude Haiku).
+  Each reply shows its approximate cost and how much of the input came from the prompt cache (enabled for Claude
+  models; most other providers cache automatically).
 - **Site-wide**: banners, menu & pages (create/delete; menu links are kept in sync on every page), the site's colors,
   and "Edit source files (advanced)" for any HTML/CSS/JS file.
 - **Banners** are the announcement strips at the top of every page (inside `<div class="site-banners">`). Add as

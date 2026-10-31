@@ -1,99 +1,120 @@
-// Optional AI assistant for Edit Mode: talks to the Google Gemini REST API directly from the
-// browser with the user's own API key, using function calling to drive the editor's tools.
-const API = 'https://generativelanguage.googleapis.com/v1beta';
+// Optional AI assistant for Edit Mode: talks to OpenRouter (an OpenAI-compatible gateway to many models)
+// directly from the browser with the user's own API key, using tool calling to drive the editor's tools.
+const API = 'https://openrouter.ai/api/v1';
 
 async function call(key, path, init = {}) {
   const res = await fetch(`${API}/${path}`, {
     ...init,
-    headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${key}`,
+      // Attribution shown in the user's OpenRouter activity.
+      'HTTP-Referer': location.origin,
+      'X-Title': 'Bishop PTO site editor',
+    },
   });
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data.error?.message || `Gemini API error ${res.status}`);
+  if (!res.ok || data.error) throw new Error(data.error?.message || `OpenRouter error ${res.status}`);
   return data;
 }
 
+// Throws if the key is invalid.
+export async function checkKey(key) {
+  await call(key, 'key');
+}
+
+// Models that support tool calling, as [{ id, name }] sorted by name.
 export async function listModels(key) {
-  const data = await call(key, 'models?pageSize=1000');
-  return (data.models || [])
-    .filter((m) => m.supportedGenerationMethods?.includes('generateContent') && m.name.includes('gemini'))
-    .map((m) => m.name.replace(/^models\//, ''));
+  const data = await call(key, 'models');
+  return (data.data || [])
+    .filter((m) => m.supported_parameters?.includes('tools') && !m.id.endsWith(':batch'))
+    .map((m) => ({ id: m.id, name: m.name || m.id }))
+    .sort((a, b) => a.name.localeCompare(b.name));
 }
 
-// Prefer the newest stable "flash" model: fast, cheap, and good at tool use.
-export function defaultModel(models) {
-  const version = (name) => parseFloat(name.match(/gemini-([\d.]+)/)?.[1] || 0);
-  const flash = models.filter((n) => /^gemini-[\d.]+-flash$/.test(n)).sort((a, b) => version(b) - version(a));
-  return flash[0] || models.find((n) => n.includes('flash')) || models[0];
-}
-
-const summarize = ({ name, args = {} }) => {
-  const text = JSON.stringify(args);
+const summarize = (name, args) => {
+  const text = typeof args === 'string' ? args : JSON.stringify(args);
   return `${name}(${text.length > 140 ? `${text.slice(0, 140)}…` : text})`;
 };
 
-// tools: { name: { description, parameters?, run(args) } }; system: () => string
-export function createAssistant({ tools, system, maxSteps = 30 }) {
-  let contents = [];
+// Claude models on OpenRouter cache only when asked; other providers cache automatically.
+const explicitCaching = (model) => /^~?anthropic\//.test(model);
+
+// tools: { name: { description, parameters?, run(args) } } with JSON Schema parameters.
+// system: fixed instructions. context: () => string, a note on the editor's current state added to each user
+// message; keeping it out of the system prompt keeps the start of every request identical, so it can be cached.
+export function createAssistant({ tools, system, context, maxSteps = 30 }) {
+  let messages = [];
+  let session = crypto.randomUUID();
   let controller = null;
-  const functionDeclarations = Object.entries(tools).map(([name, t]) => ({
-    name,
-    description: t.description,
-    ...(t.parameters && { parameters: t.parameters }),
+  const toolSpecs = Object.entries(tools).map(([name, t]) => ({
+    type: 'function',
+    function: { name, description: t.description, parameters: t.parameters || { type: 'object', properties: {} } },
   }));
 
   return {
-    reset() { contents = []; },
+    reset() { messages = []; session = crypto.randomUUID(); },
     stop() { controller?.abort(); },
     async send({ key, model, text, onEvent }) {
       controller = new AbortController();
-      const turnStart = contents.length;
-      contents.push({ role: 'user', parts: [{ text }] });
+      const turnStart = messages.length;
+      messages.push({ role: 'user', content: `${context()}\n\n${text}` });
+      const usage = { cost: 0, input: 0, cached: 0, steps: 0 };
       try {
         for (let step = 0; step < maxSteps; step++) {
-          const data = await call(key, `models/${model}:generateContent`, {
+          const data = await call(key, 'chat/completions', {
             method: 'POST',
             signal: controller.signal,
             body: JSON.stringify({
-              systemInstruction: { parts: [{ text: system() }] },
-              contents,
-              tools: [{ functionDeclarations }],
+              model,
+              messages: [{ role: 'system', content: system }, ...messages],
+              tools: toolSpecs,
+              // Keep this chat on the same provider so its cache is reused.
+              session_id: session,
+              ...(explicitCaching(model) && { cache_control: { type: 'ephemeral' } }),
             }),
           });
-          const candidate = data.candidates?.[0];
-          if (!candidate?.content?.parts?.length) {
-            const reason = candidate?.finishReason || data.promptFeedback?.blockReason || 'unknown reason';
-            throw new Error(`The model returned no answer (${reason}).`);
+          usage.steps++;
+          usage.cost += data.usage?.cost || 0;
+          usage.input += data.usage?.prompt_tokens || 0;
+          usage.cached += data.usage?.prompt_tokens_details?.cached_tokens || 0;
+          const choice = data.choices?.[0];
+          const message = choice?.message;
+          if (!message || choice.finish_reason === 'error') {
+            throw new Error(`The model returned no answer (${choice?.error?.message || choice?.finish_reason || 'unknown reason'}).`);
           }
-          // Keep the model's content verbatim (including thought signatures) for the next request.
-          contents.push(candidate.content);
-          for (const part of candidate.content.parts) {
-            if (part.text && !part.thought) onEvent('assistant', part.text);
+          // Keep the model's message verbatim (including any reasoning details) for the next request.
+          messages.push(message);
+          if (message.content) onEvent('assistant', message.content);
+          const calls = message.tool_calls || [];
+          if (!calls.length) {
+            if (!message.content) throw new Error(`The model returned no answer (${choice.finish_reason || 'unknown reason'}).`);
+            return;
           }
-          const calls = candidate.content.parts.filter((p) => p.functionCall).map((p) => p.functionCall);
-          if (!calls.length) return;
 
-          const parts = [];
-          for (const fc of calls) {
-            onEvent('tool', summarize(fc));
-            let response;
+          for (const tc of calls) {
+            const { name, arguments: raw } = tc.function;
+            onEvent('tool', summarize(name, raw || '{}'));
+            let content;
             try {
-              if (!tools[fc.name]) throw new Error(`Unknown tool ${fc.name}`);
-              response = { result: await tools[fc.name].run(fc.args || {}) };
+              if (!tools[name]) throw new Error(`Unknown tool ${name}`);
+              const result = await tools[name].run(raw ? JSON.parse(raw) : {});
+              content = typeof result === 'string' ? result : JSON.stringify(result ?? 'ok');
             } catch (err) {
-              response = { error: err.message };
+              content = JSON.stringify({ error: err.message });
               onEvent('tool', `  ↳ error: ${err.message}`);
             }
-            parts.push({ functionResponse: { name: fc.name, response } });
+            messages.push({ role: 'tool', tool_call_id: tc.id, content });
           }
-          contents.push({ role: 'user', parts });
         }
         throw new Error(`Stopped after ${maxSteps} steps.`);
       } catch (err) {
         // Drop the incomplete turn so the conversation stays valid; edits already made remain (and can be undone).
-        contents.length = turnStart;
+        messages.length = turnStart;
         throw err.name === 'AbortError' ? new Error('Stopped.') : err;
       } finally {
         controller = null;
+        if (usage.steps) onEvent('usage', usage);
       }
     },
   };

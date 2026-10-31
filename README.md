@@ -120,6 +120,10 @@ The PR is opened by the site's bot (`<app-name>[bot]`) from a branch in this rep
 - Updating the relay code: paste it and create a new deployment version (Deploy → Manage deployments).
 - Edit Mode saves HTML in the browser's canonical form (e.g. `—` instead of `&mdash;`). Hand-written HTML is fine,
   but the first Edit Mode change to such a file will include those formatting differences in its diff.
+- **Icons.** `favicon.svg` is the browser-tab icon (navy on light tabs, gold on dark ones); the same paw is inlined
+  in the header and footer. `apple-touch-icon.png` (180×180, phone home screens) and `assets/og-image.png`
+  (1200×630, the preview shown when a link is shared) are images rendered from it; re-export them if the logo
+  changes. The `og:image` tag in each page's head needs the site's full address, so update it if the domain changes.
 - Merged or closed PR branches can be deleted automatically (Settings → "Automatically delete head branches").
 - To preview an Edit Mode PR that isn't Google-verified, add the **`preview`** label to it.
 

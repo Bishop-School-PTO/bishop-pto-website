@@ -38,4 +38,6 @@ if (preview) {
   };
   editLinks.forEach((link) => link.addEventListener('click', (e) => { e.preventDefault(); startEditing(); }));
   if (sessionStorage.getItem('pto-edit') || location.hash === '#edit') startEditing();
+  // Also when "#edit" is added to the address of a page that's already open.
+  addEventListener('hashchange', () => { if (location.hash === '#edit') startEditing(); });
 }

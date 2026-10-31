@@ -99,7 +99,7 @@ The PR is opened by the site's bot (`<app-name>[bot]`) from a branch in this rep
    | `GITHUB_APP_CLIENT_ID` | the App's Client ID |
    | `GITHUB_APP_CLIENT_SECRET` | the App's client secret |
    | `GITHUB_APP_PRIVATE_KEY` | contents of `app-pkcs8.pem` |
-   | `GOOGLE_CLIENT_ID`, `ALLOWED_DOMAIN` | optional, from step 4 (e.g. `bishoppto.org`) |
+   | `GOOGLE_CLIENT_ID`, `ALLOWED_DOMAIN` | optional, from step 4 (e.g. `bishopschoolpto.com`) |
 
    Deploy → New deployment → Web app, *Execute as: Me*, *Who has access: Anyone*; copy the `/exec` URL.
    (If your Workspace admin blocks "Anyone" access, deploy it from a personal Google account instead.)

@@ -23,12 +23,12 @@ export async function checkKey(key) {
   await call(key, 'key');
 }
 
-// Models that support tool calling, as [{ id, name }] sorted by name.
+// Models that support tool calling, as [{ id, name, price }] sorted by name; price is USD per million input tokens.
 export async function listModels(key) {
   const data = await call(key, 'models');
   return (data.data || [])
     .filter((m) => m.supported_parameters?.includes('tools') && !m.id.endsWith(':batch'))
-    .map((m) => ({ id: m.id, name: m.name || m.id }))
+    .map((m) => ({ id: m.id, name: m.name || m.id, price: Number(m.pricing?.prompt) * 1e6 }))
     .sort((a, b) => a.name.localeCompare(b.name));
 }
 

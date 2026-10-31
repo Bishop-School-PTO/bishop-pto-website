@@ -1212,6 +1212,26 @@ function renderChatLog() {
   ui.chatLog.scrollTop = ui.chatLog.scrollHeight;
 }
 
+// Model choices: "~…-latest" aliases first (they always point at a family's newest release), then every other
+// tool-capable model grouped by provider, each with its input price.
+function modelOptions(selected) {
+  const price = (m) => (Number.isFinite(m.price) ? ` — ${m.price ? `$${m.price < 1 ? m.price.toFixed(2) : +m.price.toFixed(1)}/M tokens` : 'free'}` : '');
+  const option = (m, label = m.name) => h('option', { value: m.id, selected: m.id === selected }, `${label}${price(m)}`);
+  const models = state.models || [];
+  const groups = new Map([['Always the latest', []]]);
+  for (const m of models) {
+    const latest = m.id.startsWith('~');
+    const group = latest ? 'Always the latest' : m.name.includes(': ') ? m.name.split(': ')[0] : m.id.split('/')[0];
+    if (!groups.has(group)) groups.set(group, []);
+    groups.get(group).push(latest ? option(m, m.name.replace(/ Latest$/, '')) : option(m, m.name.split(': ').slice(-1)[0]));
+  }
+  const known = models.some((m) => m.id === selected);
+  return [
+    known ? null : h('option', { value: selected, selected: true }, selected),
+    ...[...groups].filter(([, opts]) => opts.length).map(([label, opts]) => h('optgroup', { label }, opts)),
+  ];
+}
+
 function aiSection() {
   ui.chatLog = null;
   if (!aiKey()) {
@@ -1235,21 +1255,13 @@ function aiSection() {
       }, 'Connect'));
   }
 
-  // Hundreds of models: a text box with suggestions (type to filter) rather than a long dropdown.
-  const modelList = h('datalist', { id: 'pe-models' }, (state.models || []).map((m) => h('option', { value: m.id }, m.name)));
-  const model = h('input', {
-    value: aiModel(),
-    list: 'pe-models',
+  const model = h('select', {
     'aria-label': 'Model',
-    title: 'Model (type to search)',
-    spellcheck: false,
     onchange: (e) => {
-      const id = e.target.value.trim();
-      if (id && id !== (CONFIG.aiModel || '')) localStorage.setItem(AI_MODEL, id);
-      else localStorage.removeItem(AI_MODEL);
-      e.target.value = aiModel();
+      if (e.target.value === CONFIG.aiModel) localStorage.removeItem(AI_MODEL);
+      else localStorage.setItem(AI_MODEL, e.target.value);
     },
-  });
+  }, modelOptions(aiModel()));
   ui.chatLog = h('div', { class: 'pe-chat' });
   const input = h('textarea', { rows: 3, placeholder: 'What would you like to change?', disabled: state.busy });
   const send = () => {
@@ -1262,7 +1274,7 @@ function aiSection() {
 
   return h('div', { class: 'pe-group' },
     h('div', { class: 'pe-row' },
-      model, modelList,
+      model,
       h('button', { class: 'pe-btn', onclick: () => { assistant.reset(); state.chat = []; render(); } }, 'New chat'),
       h('button', {
         class: 'pe-btn',

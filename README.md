@@ -49,7 +49,7 @@ resized by dragging its left edge.
   surrounding card or section. Raw HTML and the page title/description are tucked into collapsible extras.
 - **Ask the assistant** (optional): paste an [OpenRouter API key](https://openrouter.ai/settings/keys) and ask for changes
   in plain language. The key stays in the browser (session-only unless "Remember on this device" is ticked) and is sent
-  only to OpenRouter, which bills the key's owner. Any OpenRouter model that supports tool calling can be picked; the
+  only to OpenRouter, which bills the key's owner. Any OpenRouter model that supports tool calling can be picked from the dropdown ("Always the latest" aliases first, with prices); the
   default is `aiModel` in `js/edit/config.json` (`~anthropic/claude-haiku-latest` follows the newest Claude Haiku).
   Each reply shows its approximate cost and how much of the input came from the prompt cache (enabled for Claude
   models; most other providers cache automatically).

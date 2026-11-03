@@ -9,7 +9,7 @@
  *    GitHub's token once to read the user's identity, revokes it, and returns its own signed session.
  *
  * Script properties (Project Settings → Script properties):
- *   GITHUB_REPO                e.g. etruong42/bishop-pto
+ *   GITHUB_REPO                e.g. bishopschoolpto/bishop-pto-website
  *   GITHUB_BRANCH              e.g. main
  *   GITHUB_APP_CLIENT_ID       GitHub App → General → Client ID (Iv23…)
  *   GITHUB_APP_CLIENT_SECRET   GitHub App → General → Client secrets

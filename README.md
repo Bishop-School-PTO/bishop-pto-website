@@ -84,7 +84,7 @@ The PR is opened by the site's bot (`<app-name>[bot]`) from a branch in this rep
 3. **GitHub App** (the bot that opens PRs, and "Sign in with GitHub"). GitHub → Settings → Developer settings →
    GitHub Apps → New GitHub App:
    - Homepage URL: the site. Webhook: uncheck *Active*.
-   - **Callback URLs** (for Sign in with GitHub): `https://etruong42.github.io/bishop-pto/js/edit/github-callback.html`
+   - **Callback URLs** (for Sign in with GitHub): `https://preview.bishopschoolpto.com/js/edit/github-callback.html`
      and `http://localhost:8083/js/edit/github-callback.html`.
    - Repository permissions: **Contents: Read and write**, **Pull requests: Read and write** (Metadata: read is
      automatic). No account permissions. Do *not* grant Workflows.
@@ -94,14 +94,14 @@ The PR is opened by the site's bot (`<app-name>[bot]`) from a branch in this rep
    - **Install App** → only this repository.
 4. **Google Workspace sign-in (optional, enables no-GitHub-account submissions).** Google Cloud Console (ideally a
    project owned by the Workspace) → APIs & Services → Credentials → Create OAuth client ID → *Web application*.
-   Authorized JavaScript origins: `https://etruong42.github.io` and `http://localhost:8083`. No secret is needed.
+   Authorized JavaScript origins: `https://preview.bishopschoolpto.com` and `http://localhost:8083`. No secret is needed.
 5. **Relay.** Create a project at [script.google.com](https://script.google.com) and paste `relay/Code.gs`
    (and `relay/appsscript.json` via Project Settings → "Show appsscript.json"). Under Project Settings →
    Script properties add:
 
    | Property | Value |
    | --- | --- |
-   | `GITHUB_REPO` | `etruong42/bishop-pto` |
+   | `GITHUB_REPO` | `bishopschoolpto/bishop-pto-website` |
    | `GITHUB_BRANCH` | `main` |
    | `GITHUB_APP_CLIENT_ID` | the App's Client ID |
    | `GITHUB_APP_CLIENT_SECRET` | the App's client secret |

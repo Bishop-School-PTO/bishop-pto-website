@@ -102,7 +102,7 @@ The PR is opened by the site's bot (`<app-name>[bot]`) from a branch in this rep
 
    | Property | Value |
    | --- | --- |
-   | `GITHUB_REPO` | `bishopschoolpto/bishop-pto-website` |
+   | `GITHUB_REPO` | `Bishop-School-PTO/bishop-pto-website` |
    | `GITHUB_BRANCH` | `main` |
    | `GITHUB_APP_CLIENT_ID` | the App's Client ID |
    | `GITHUB_APP_CLIENT_SECRET` | the App's client secret |

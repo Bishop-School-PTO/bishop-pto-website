@@ -9,7 +9,7 @@
  *    GitHub's token once to read the user's identity, revokes it, and returns its own signed session.
  *
  * Script properties (Project Settings → Script properties):
- *   GITHUB_REPO                e.g. bishopschoolpto/bishop-pto-website
+ *   GITHUB_REPO                e.g. Bishop-School-PTO/bishop-pto-website
  *   GITHUB_BRANCH              e.g. main
  *   GITHUB_APP_CLIENT_ID       GitHub App → General → Client ID (Iv23…)
  *   GITHUB_APP_CLIENT_SECRET   GitHub App → General → Client secrets
@@ -186,15 +186,17 @@ function verifyIdToken(token, cfg) {
 // ---------------------------------------------------------------------------
 // GitHub App authentication
 // ---------------------------------------------------------------------------
-// Installation tokens last an hour; cache one for 50 minutes.
+// Installation tokens last an hour; cache one for 50 minutes. Keyed by repo, since a token only works for the
+// installation it came from (changing GITHUB_REPO would otherwise reuse the old one).
 function installationToken(cfg) {
   var cache = CacheService.getScriptCache();
-  var cached = cache.get('installation-token');
+  var key = 'installation-token:' + cfg.GITHUB_REPO;
+  var cached = cache.get(key);
   if (cached) return cached;
   var auth = 'Bearer ' + appJwt(cfg);
   var installation = api('get', 'https://api.github.com/repos/' + cfg.GITHUB_REPO + '/installation', null, auth);
   var token = api('post', 'https://api.github.com/app/installations/' + installation.id + '/access_tokens', {}, auth).token;
-  cache.put('installation-token', token, 3000);
+  cache.put(key, token, 3000);
   return token;
 }
 

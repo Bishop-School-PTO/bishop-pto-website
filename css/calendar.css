@@ -1,0 +1,215 @@
+/* ---------------------------------------------------
+   Calendar: toggles, open-in-window and add-to-calendar tools
+--------------------------------------------------- */
+
+/* Visually hidden text for screen readers */
+.calendar-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Small outline icons (external link arrow, chevron) */
+.calendar-icon {
+  width: 15px;
+  height: 15px;
+  flex: none;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* The toggles only make sense with JavaScript; the script reveals them. */
+.calendar-card .calendar-legend[hidden],
+.calendar-toggle-hint[hidden] { display: none; }
+
+/* With JavaScript the phone gets the agenda view, which needs no side-scrolling. */
+@media (max-width: 720px) {
+  .calendar-js .calendar-embed iframe { min-width: 0; }
+}
+
+/* ---- Calendar toggles ---- */
+.calendar-card .calendar-legend {
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.calendar-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  padding: 8px 20px 8px 14px;
+  font: inherit;
+  font-weight: 700;
+  font-size: 0.95rem;
+  line-height: 1.2;
+  color: var(--navy-900);
+  background: var(--white);
+  border: 2px solid var(--navy-700);
+  border-radius: 999px;
+  box-shadow: 0 2px 8px rgba(22, 33, 92, 0.1);
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease,
+    box-shadow 0.15s ease, color 0.15s ease;
+}
+.calendar-toggle:hover { background: var(--gold-100); }
+.calendar-toggle:focus-visible {
+  outline: 3px solid var(--gold-500);
+  outline-offset: 3px;
+}
+
+.calendar-toggle .legend-dot {
+  width: 16px;
+  height: 16px;
+  transition: background 0.15s ease, box-shadow 0.15s ease;
+}
+
+/* Off: muted text, soft border, hollow ring instead of a solid dot */
+.calendar-toggle[aria-pressed="false"] {
+  background: var(--cream-50);
+  color: #6b7094;
+  border-color: rgba(22, 33, 92, 0.18);
+  box-shadow: none;
+}
+.calendar-toggle[aria-pressed="false"]:hover { background: var(--cream-100); }
+.calendar-toggle[aria-pressed="false"] .legend-dot-pto {
+  background: transparent;
+  box-shadow: inset 0 0 0 2.5px #f6bf26;
+}
+.calendar-toggle[aria-pressed="false"] .legend-dot-aps {
+  background: transparent;
+  box-shadow: inset 0 0 0 2.5px #3f51b5;
+}
+
+.calendar-toggle-hint {
+  margin: 0 0 20px;
+  font-size: 0.85rem;
+  color: var(--ink-soft);
+}
+
+/* ---- Actions row: add to calendar (folded) + open in new window ---- */
+.calendar-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px 24px;
+  margin: 20px 0 0;
+  font-size: 0.9rem;
+}
+
+.calendar-add {
+  flex: 1 1 320px;
+  min-width: 0;
+}
+
+.calendar-summary,
+.calendar-open {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--white);
+  cursor: pointer;
+}
+.calendar-summary { list-style: none; }
+.calendar-summary::-webkit-details-marker { display: none; }
+.calendar-summary:focus-visible,
+.calendar-open:focus-visible,
+.calendar-chip:focus-visible {
+  outline: 3px solid var(--gold-500);
+  outline-offset: 2px;
+}
+
+.calendar-chevron { transition: transform 0.2s ease; }
+.calendar-add[open] .calendar-chevron { transform: rotate(180deg); }
+
+/* ---- Folded panel ---- */
+.calendar-add-panel {
+  margin-top: 14px;
+  padding: 18px 22px;
+  background: var(--cream-100);
+  border: 1px solid rgba(244, 197, 63, 0.35);
+  border-radius: var(--radius-md);
+}
+.calendar-add-panel > p {
+  margin: 0 0 6px;
+  color: var(--ink-soft);
+  font-size: 0.88rem;
+}
+
+.calendar-add-panel ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.calendar-add-panel li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+  padding: 12px 0;
+  border-top: 1px solid rgba(22, 33, 92, 0.1);
+}
+.calendar-add-panel li:first-child { border-top: none; }
+
+.calendar-tools-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 15rem;
+  font-weight: 700;
+  color: var(--navy-900);
+}
+
+.calendar-tools-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.calendar-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 6px 14px;
+  font-weight: 700;
+  font-size: 0.85rem;
+  text-decoration: none;
+  color: var(--navy-800);
+  background: var(--white);
+  border: 1.5px solid rgba(43, 61, 146, 0.3);
+  border-radius: 999px;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+.calendar-chip:hover {
+  background: var(--navy-800);
+  border-color: var(--navy-800);
+  color: var(--white);
+}
+
+@media (max-width: 720px) {
+  .calendar-tools { flex-direction: column-reverse; align-items: stretch; }
+  .calendar-add { flex-basis: auto; }
+  .calendar-summary,
+  .calendar-open { width: 100%; justify-content: center; }
+  .calendar-add-panel { padding: 16px; }
+  .calendar-tools-name { flex-basis: 100%; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .calendar-toggle,
+  .calendar-chip,
+  .calendar-chevron,
+  .calendar-toggle .legend-dot { transition: none; }
+}

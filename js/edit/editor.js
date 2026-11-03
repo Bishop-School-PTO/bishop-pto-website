@@ -4,7 +4,7 @@
 // Model: every file is plain text. `state.files` holds drafted contents (null = deleted) on top
 // of the published originals. The open page is edited live in the DOM and serialized back into
 // `state.files` whenever needed. Drafts persist in localStorage until submitted or discarded.
-import { lineDiff } from './diff.js';
+import { lineDiff, unifiedDiff } from './diff.js';
 import { contentHash, decodeJwt, sendToRelay, signInWithGitHub, signInWithGoogle } from './submit.js';
 import { checkKey, createAssistant, listModels } from './ai.js';
 
@@ -1355,18 +1355,24 @@ async function reviewContent() {
     h('div', { class: 'pe-section' },
       h('div', { class: 'pe-heading' }, 'Your changes'),
       h('ul', { class: 'pe-list' }, rows),
-      h('button', {
-        class: 'pe-btn pe-danger',
-        onclick: guard(async () => {
-          if (!confirm('Discard all of your draft changes?')) return;
-          checkpoint();
-          state.files.clear();
-          state.dirty = false;
-          applyCssDrafts();
-          persist();
-          await openPage((await original(state.current)) ? state.current : 'index.html', { save: false });
-        }),
-      }, 'Discard all')),
+      h('div', { class: 'pe-row' },
+        h('button', {
+          class: 'pe-btn',
+          title: 'Download every change as one patch file (apply it with `git apply`)',
+          onclick: () => downloadPatch(changes),
+        }, 'Download .patch'),
+        h('button', {
+          class: 'pe-btn pe-danger',
+          onclick: guard(async () => {
+            if (!confirm('Discard all of your draft changes?')) return;
+            checkpoint();
+            state.files.clear();
+            state.dirty = false;
+            applyCssDrafts();
+            persist();
+            await openPage((await original(state.current)) ? state.current : 'index.html', { save: false });
+          }),
+        }, 'Discard all'))),
     h('div', { class: 'pe-section' },
       h('div', { class: 'pe-heading' }, 'Propose these changes'),
       field('Summary', h('input', { value: sub.title, maxlength: 120, disabled: busy, oninput: (e) => { sub.title = e.target.value; } })),
@@ -1385,6 +1391,17 @@ async function reviewContent() {
       sub.stage === 'form' && !usingProof() && !state.github && relayReady() && note('Choose how to identify yourself above.'),
       sub.stage === 'signin' && h('button', { class: 'pe-btn', onclick: () => { sub.stage = 'form'; ui.signin.replaceChildren(); render(); } }, 'Cancel')),
   ];
+}
+
+// Saves the draft as a git-style patch, for sharing it or applying it outside of Edit Mode.
+function downloadPatch(changes) {
+  const patch = changes.map((c) => unifiedDiff(c.path, c.before, c.content)).join('');
+  const link = h('a', {
+    href: URL.createObjectURL(new Blob([patch], { type: 'text/x-diff' })),
+    download: `${slugify(state.submit.title) || 'edit-mode-changes'}.patch`,
+  });
+  link.click();
+  setTimeout(() => URL.revokeObjectURL(link.href), 0);
 }
 
 // Who is submitting: Google Workspace proof and/or GitHub sign-in (no GitHub account needed for the former).

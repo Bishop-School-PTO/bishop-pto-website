@@ -63,7 +63,8 @@ resized by dragging its left edge.
   or remove them. Changes apply to every page, and new pages start with the current banners. Clicking a banner on the
   page opens its settings. The assistant can manage them too.
 - The footer shows how many files changed, **Undo** (block edits, page changes, AI turns; Ctrl+Z undoes typing), and
-  **Review & submit**, which shows a diff of every changed file and opens the pull request.
+  **Review & submit**, which shows a diff of every changed file and opens the pull request. **Download .patch**
+  there exports all of the changes as one git-style patch (apply it in a checkout with `git apply <file>.patch`).
 - Drafts are kept in the browser until submitted or discarded.
 
 ### Submitting a change

@@ -419,7 +419,11 @@ function select(el, { quiet = false } = {}) {
   state.selected?.removeAttribute('data-pe-sel');
   state.selected = el && el !== document.body ? el : null;
   state.selected?.setAttribute('data-pe-sel', '');
-  if (!quiet) openSection('page');
+  if (quiet) return;
+  // Don't pull the panel away from another open section; the selection is still highlighted on the
+  // page and shows up in "This page" when the user goes back to it.
+  if (state.view === 'edit' && state.section && state.section !== 'page') return;
+  openSection('page');
 }
 
 function outerHTMLClean(el) {

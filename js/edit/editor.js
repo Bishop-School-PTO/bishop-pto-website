@@ -4,7 +4,7 @@
 // Model: every file is plain text. `state.files` holds drafted contents (null = deleted) on top
 // of the published originals. The open page is edited live in the DOM and serialized back into
 // `state.files` whenever needed. Drafts persist in localStorage until submitted or discarded.
-import { lineDiff, unifiedDiff } from './diff.js';
+import { applyHunks, lineDiff, parsePatch, unifiedDiff } from './diff.js';
 import { contentHash, decodeJwt, sendToRelay, signInWithGitHub, signInWithGoogle } from './submit.js';
 import { checkKey, createAssistant, listModels } from './ai.js';
 
@@ -35,6 +35,7 @@ const state = {
   editingFile: null,
   openDiffs: new Set(),
   submit: { title: '', description: '', stage: 'form', proof: true },
+  import: { pr: '', patch: '', note: '' }, // Site-wide → Import changes
   github: JSON.parse(sessionStorage.getItem(GITHUB_SESSION) || 'null'), // { login, name, session } from Sign in with GitHub
   chat: [],
   busy: false,
@@ -1064,6 +1065,7 @@ async function siteSection() {
       h('div', { class: 'pe-heading' }, 'Colors'),
       await colorControls()),
     disclosure('source', 'Edit source files (advanced)', sourceList),
+    disclosure('import', 'Import changes (patch or pull request)', importForm),
   ];
 }
 
@@ -1185,6 +1187,104 @@ function sourceList() {
       }),
     }, 'New file')),
   ];
+}
+
+function importForm() {
+  const imp = state.import;
+  const done = (count, from) => { imp.note = `Imported changes to ${count} file${count === 1 ? '' : 's'} from ${from}. They’re now part of your draft — see Review & submit.`; };
+  return [
+    note('Continue from changes someone already made: they’re applied on top of your draft, so you can keep editing and submit the result as a new proposal. Only import changes from people you trust — their page code runs while you edit.'),
+    h('div', { class: 'pe-row' },
+      h('input', { placeholder: 'Pull request number or link', value: imp.pr, oninput: (e) => { imp.pr = e.target.value; } }),
+      h('button', {
+        class: 'pe-btn',
+        onclick: guard(async () => {
+          const pr = await fetchPullRequest(imp.pr);
+          const count = await importPatch(pr.diff);
+          if (!count) return;
+          if (!state.submit.title) state.submit.title = pr.title;
+          if (!state.submit.description) state.submit.description = `Builds on #${pr.number}.`;
+          imp.pr = '';
+          done(count, `#${pr.number}`);
+        }),
+      }, 'Import')),
+    h('div', {}, h('textarea', {
+      class: 'pe-code', rows: 6, spellcheck: 'false', value: imp.patch, placeholder: 'Or paste a diff (e.g. from git diff, or a downloaded .patch)…',
+      oninput: (e) => { imp.patch = e.target.value; },
+    })),
+    h('div', { class: 'pe-row' },
+      h('input', {
+        type: 'file', accept: '.patch,.diff,text/x-diff,text/x-patch,text/plain',
+        onchange: async (e) => { imp.patch = (await e.target.files[0]?.text()) ?? ''; render(); },
+      }),
+      h('button', {
+        class: 'pe-btn',
+        onclick: guard(async () => {
+          const count = await importPatch(imp.patch);
+          if (!count) return;
+          imp.patch = '';
+          done(count, 'the patch');
+        }),
+      }, 'Apply patch')),
+    imp.note && note(imp.note),
+  ];
+}
+
+// A pull request in this repository by number, "#42", or link, with its diff (from the merge base, like GitHub shows).
+async function fetchPullRequest(input) {
+  const text = input.trim();
+  const link = text.match(/github\.com\/([\w.-]+\/[\w.-]+)\/pull\/(\d+)/i);
+  const number = link ? link[2] : text.match(/^#?(\d+)$/)?.[1];
+  if (!number) throw new Error('Enter a pull request number (like 42) or its link.');
+  if (link && link[1].toLowerCase() !== CONFIG.repo.toLowerCase()) throw new Error(`Only pull requests in ${CONFIG.repo} can be imported.`);
+  const url = `https://api.github.com/repos/${CONFIG.repo}/pulls/${number}`;
+  const get = async (accept) => {
+    const res = await fetch(url, { headers: { Accept: accept } });
+    if (res.ok) return res;
+    if (res.status === 404) throw new Error(`There’s no pull request #${number}.`);
+    if (res.status === 403 || res.status === 429) throw new Error('GitHub is limiting requests right now. Try again later, or download the PR’s .diff and paste it instead.');
+    if (res.status === 406 || res.status === 422) throw new Error(`#${number} is too large for GitHub to send as a diff.`);
+    throw new Error(`GitHub responded with ${res.status}.`);
+  };
+  const [pr, diff] = await Promise.all([
+    get('application/vnd.github+json').then((r) => r.json()),
+    get('application/vnd.github.diff').then((r) => r.text()),
+  ]);
+  return { number: pr.number, title: pr.title, diff };
+}
+
+// Applies a patch on top of the draft (one undo step). Returns how many files changed, or 0 if cancelled.
+async function importPatch(text) {
+  const staged = new Map(); // later parts of a patch series see earlier ones
+  const current = (path) => (staged.has(path) ? staged.get(path) : read(path));
+  const problems = [];
+  for (const f of parsePatch(text)) {
+    try {
+      if (f.binary) throw new Error('binary files can’t be edited here');
+      for (const p of [f.from, f.to]) if (p != null && !PATH_RE.test(p)) throw new Error(`${p === (f.to ?? f.from) ? 'it' : p} can’t be edited here (text files only, no hidden folders)`);
+      const before = f.from == null ? null : await current(f.from);
+      if (f.from != null && before == null) throw new Error('the file doesn’t exist');
+      const after = applyHunks(before, f.hunks);
+      if (f.to == null && after !== '') throw new Error('the file has changed since this patch was made');
+      if (f.to != null && f.to !== f.from) {
+        const existing = await current(f.to);
+        if (existing != null && existing !== after) throw new Error('the file already exists');
+      }
+      if (f.from != null && f.from !== f.to) staged.set(f.from, null);
+      if (f.to != null) staged.set(f.to, after);
+    } catch (err) {
+      problems.push(`${f.to ?? f.from}: ${err.message}`);
+    }
+  }
+  if (!staged.size) throw new Error(problems.length ? `Nothing could be imported:\n\n${problems.join('\n')}` : 'The patch has no changes to import.');
+  if (problems.length && !confirm(`These couldn’t be imported:\n\n${problems.join('\n')}\n\nImport the other ${staged.size} file${staged.size === 1 ? '' : 's'} anyway?`)) return 0;
+
+  checkpoint();
+  for (const [path, content] of staged) state.files.set(path, content);
+  applyCssDrafts();
+  persist();
+  await openPage(state.files.get(state.current) === null ? 'index.html' : state.current, { save: false });
+  return staged.size;
 }
 
 function editSource(path) {

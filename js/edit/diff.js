@@ -1,4 +1,5 @@
-// Minimal line diffs: `lineDiff` for the "Submit" review list, `unifiedDiff` for exporting a patch.
+// Minimal line diffs: `lineDiff` for the "Submit" review list, `unifiedDiff` for exporting a patch, and
+// `parsePatch` + `applyHunks` for importing one.
 
 // Edit script between two line arrays as [[op, line], ...] with op ' ' (same), '+' (added) or '-' (removed),
 // or null if the changed region is too large to diff.
@@ -98,4 +99,95 @@ export function unifiedDiff(path, before, after, context = 3) {
     newLine += newCount;
   }
   return `${out.join('\n')}\n`;
+}
+
+// Parses a unified diff (`git diff`, `git format-patch`, a GitHub pull request's diff, or plain `diff -u`) into
+// [{ from, to, hunks, binary }]. `from`/`to` are paths, null when the file is new/deleted; each hunk is
+// { oldStart, old, new } with old/new as lines that keep their '\n' (like `linesOf`).
+export function parsePatch(text) {
+  // A patch file saved with Windows line endings throughout.
+  if (!/(^|[^\r])\n/.test(text)) text = text.replace(/\r\n/g, '\n');
+  const lines = text.split('\n');
+  const files = [];
+  let file = null;
+  const path = (raw, prefix) => {
+    const p = raw.replace(/\t.*$/, ''); // `diff -u` appends a timestamp after a tab
+    return p === '/dev/null' ? null : p.startsWith(prefix) ? p.slice(prefix.length) : p;
+  };
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    let m;
+    if ((m = line.match(/^diff --git a\/(\S+) b\/(\S+)$/))) {
+      file = { from: m[1], to: m[2], hunks: [], git: true };
+      files.push(file);
+    } else if (line.startsWith('--- ') && lines[i + 1]?.startsWith('+++ ')) {
+      // Belongs to the preceding `diff --git` header, or starts a file in a plain diff.
+      if (!file?.git || file.named || file.hunks.length) files.push(file = { hunks: [] });
+      file.from = path(line.slice(4), 'a/');
+      file.to = path(lines[++i].slice(4), 'b/');
+      file.named = true;
+    } else if (!file?.git || file.named) {
+      if ((m = line.match(/^@@ -(\d+)(?:,(\d+))? \+\d+(?:,(\d+))? @@/)) && file) i = readHunk(lines, i, m, file);
+    } else if (line.startsWith('new file mode')) file.from = null;
+    else if (line.startsWith('deleted file mode')) file.to = null;
+    else if (line.startsWith('rename from ')) file.from = line.slice(12);
+    else if (line.startsWith('rename to ')) file.to = line.slice(10);
+    else if (line.startsWith('Binary files') || line === 'GIT binary patch') file.binary = true;
+  }
+  if (!files.length) throw new Error('No file changes were found. Paste a diff like the one `git diff` prints.');
+  return files.map(({ from, to, hunks, binary = false }) => ({ from, to, hunks, binary }));
+}
+
+// Reads the hunk whose header is lines[i] into `file`; returns the index of its last line.
+function readHunk(lines, i, [header, oldStart, oldCount = '1', newCount = '1'], file) {
+  const hunk = { oldStart: Number(oldStart), old: [], new: [] };
+  let oldLeft = Number(oldCount);
+  let newLeft = Number(newCount);
+  while (oldLeft > 0 || newLeft > 0) {
+    const line = lines[++i];
+    if (line === undefined) throw new Error(`The patch ends in the middle of a change (${header}).`);
+    if (line.startsWith('\\')) continue;
+    const op = line[0] ?? ' '; // some tools strip the space from empty context lines
+    const touched = { ' ': [hunk.old, hunk.new], '-': [hunk.old], '+': [hunk.new] }[op];
+    if (!touched) throw new Error(`Unexpected line in the patch (${header}): ${line}`);
+    // "\ No newline at end of file" after a line means that line has no '\n'.
+    const text = line.slice(1) + (lines[i + 1]?.startsWith('\\') ? '' : '\n');
+    for (const side of touched) side.push(text);
+    if (op !== '+') oldLeft--;
+    if (op !== '-') newLeft--;
+  }
+  file.hunks.push(hunk);
+  return i;
+}
+
+// Applies parsed hunks to `text` (null = the file doesn't exist) and returns the result. Hunks are matched
+// exactly, but may have moved up or down, e.g. when the patch was made against an older version of the file.
+export function applyHunks(text, hunks) {
+  const lines = linesOf(text);
+  const out = [];
+  let pos = 0; // first line not yet copied to `out`
+  let offset = 0; // how far the previous hunk was from where the patch placed it
+  for (const hunk of hunks) {
+    // A hunk that only adds lines is numbered by the line before it.
+    const expected = (hunk.old.length ? hunk.oldStart - 1 : hunk.oldStart) + offset;
+    const at = findLines(lines, hunk.old, expected, pos);
+    if (at < 0) throw new Error(`the change near line ${hunk.oldStart} doesn't match the current file`);
+    offset += at - expected;
+    out.push(...lines.slice(pos, at), ...hunk.new);
+    pos = at + hunk.old.length;
+  }
+  return [...out, ...lines.slice(pos)].join('');
+}
+
+// Index (>= min) where `needle` occurs in `lines`, searching outward from `expected`; -1 if nowhere.
+function findLines(lines, needle, expected, min) {
+  const last = lines.length - needle.length;
+  if (!needle.length) return Math.min(Math.max(expected, min), lines.length);
+  const matches = (at) => at >= min && at <= last && needle.every((line, k) => lines[at + k] === line);
+  for (let d = 0; expected - d >= min || expected + d <= last; d++) {
+    if (matches(expected + d)) return expected + d;
+    if (d && matches(expected - d)) return expected - d;
+  }
+  return -1;
 }

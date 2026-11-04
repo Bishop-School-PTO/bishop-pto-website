@@ -57,7 +57,12 @@ resized by dragging its left edge.
   Each reply shows its approximate cost and how much of the input came from the prompt cache (enabled for Claude
   models; most other providers cache automatically).
 - **Site-wide**: banners, menu & pages (create/delete; menu links are kept in sync on every page), the site's colors,
-  and "Edit source files (advanced)" for any HTML/CSS/JS file.
+  "Edit source files (advanced)" for any HTML/CSS/JS file, and "Import changes" (below).
+- **Import changes** applies a pull request (by number or link) or a pasted/uploaded diff (`git diff`,
+  `git format-patch`, or a **Download .patch** export) on top of the draft, so you can keep working from someone else's
+  proposal and submit the result as a new one. Changes still apply if the lines have moved since; files that don't
+  match, binary files, and paths Edit Mode can't edit are listed and skipped. Importing is one Undo step. Imported
+  pages render live while editing, so only import changes you trust.
 - **Banners** are the announcement strips at the top of every page (inside `<div class="site-banners">`). Add as
   many as you like, each with a style (Notice, Alert, Info), a bold heading, a message, and an optional link; reorder
   or remove them. Changes apply to every page, and new pages start with the current banners. Clicking a banner on the

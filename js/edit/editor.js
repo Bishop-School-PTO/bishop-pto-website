@@ -900,6 +900,13 @@ function onPagePick(e) {
   openSection('site').then(() => ui.root.querySelector('.pe-newpage-title')?.focus());
 }
 
+// While reviewing, the page behaves like the live site so changes can be tried out: no editing,
+// no block selection or hover outlines.
+function setPageEditable(editable) {
+  document.body.contentEditable = editable ? 'true' : 'false';
+  if (!editable) select(null, { quiet: true });
+}
+
 let renderSeq = 0;
 async function render() {
   if (!ui.root) return;
@@ -910,6 +917,7 @@ async function render() {
   if (seq !== renderSeq) return;
   renderPagePicker();
   updateBadge();
+  setPageEditable(state.view !== 'review');
   const fullView = state.view !== 'edit';
   ui.accordion.hidden = fullView;
   ui.view.hidden = !fullView;
@@ -1549,6 +1557,12 @@ function identitySection(busy) {
 const BLOCK = 'h1, h2, h3, h4, h5, h6, p, li, a, button, img, svg, iframe, address, blockquote, figure, td, th';
 function onClick(e) {
   if (!document.body.contains(e.target)) return;
+  if (state.view === 'review') {
+    // Still never navigate away (that would leave the review), but in-page links and controls work.
+    const link = e.target.closest('a[href]');
+    if (link && !link.getAttribute('href').startsWith('#')) e.preventDefault();
+    return;
+  }
   const banner = e.target.closest('.site-banners > .site-banner');
   if (banner) {
     e.preventDefault();

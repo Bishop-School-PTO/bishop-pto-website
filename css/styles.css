@@ -182,12 +182,23 @@ a { color: inherit; }
   color: var(--navy-900);
 }
 
+/* Gold paw on a navy badge, matching apple-touch-icon.png; on navy backgrounds (-light) the badge is dropped. */
 .brand-mark {
+  flex-shrink: 0;
+  width: 42px;
+  height: 42px;
+  padding: 8px;
+  background: var(--navy-900);
+  border-radius: 50%;
+  fill: var(--gold-500);
+}
+.brand-mark-light {
   width: 34px;
   height: 34px;
-  fill: var(--navy-900);
+  padding: 0;
+  background: none;
+  border-radius: 0;
 }
-.brand-mark-light { fill: var(--gold-500); }
 
 .brand-text {
   font-family: var(--font-display);

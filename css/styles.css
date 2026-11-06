@@ -185,9 +185,9 @@ a { color: inherit; }
 .brand-mark {
   width: 34px;
   height: 34px;
-  fill: var(--gold-500);
+  fill: var(--navy-900);
 }
-.brand-mark-light { fill: var(--gold-400); }
+.brand-mark-light { fill: var(--gold-500); }
 
 .brand-text {
   font-family: var(--font-display);
@@ -210,7 +210,13 @@ a { color: inherit; }
   color: var(--navy-800);
   font-size: 0.98rem;
 }
-.primary-nav a:hover { color: var(--gold-500); }
+.primary-nav a:not(.nav-cta):hover {
+  color: var(--navy-600);
+  text-decoration: underline;
+  text-decoration-color: var(--gold-500);
+  text-decoration-thickness: 3px;
+  text-underline-offset: 6px;
+}
 
 .nav-cta {
   background: var(--navy-900);
@@ -448,7 +454,11 @@ a { color: inherit; }
   text-decoration: underline;
   text-underline-offset: 2px;
 }
-.card-note a:hover { color: var(--gold-500); }
+.card-note a:hover {
+  color: var(--navy-600);
+  text-decoration-color: var(--gold-500);
+  text-decoration-thickness: 2px;
+}
 
 .card-donate {
   background: linear-gradient(160deg, var(--gold-100), var(--cream-100));

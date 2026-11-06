@@ -64,33 +64,295 @@
 
   <main id="main">
 
-    <section class="calendar-section wrap" id="calendar">
+    <link rel="stylesheet" href="css/calendar.css" disabled=""><style data-pe-css="css/calendar.css">/* ---------------------------------------------------
+   Calendar: combined pills — show/hide toggle,
+   add-to-calendar menu and open-in-new-window link
+--------------------------------------------------- */
+
+/* Visually hidden text for screen readers */
+.calendar-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Small outline icons */
+.calendar-icon {
+  width: 15px;
+  height: 15px;
+  flex: none;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* ---- Pill row ---- */
+.calendar-card .calendar-legend {
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+/* One pill per calendar: [ toggle | add | open ] */
+.calendar-pill {
+  position: relative;
+  display: inline-flex;
+  align-items: stretch;
+  min-height: 44px;
+  background: var(--white);
+  border: 2px solid var(--navy-700);
+  border-radius: 999px;
+  box-shadow: 0 2px 8px rgba(22, 33, 92, 0.1);
+  transition: background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+/* Off: muted dashed pill */
+.calendar-pill.is-off {
+  background: transparent;
+  border-style: dashed;
+  border-color: rgba(22, 33, 92, 0.3);
+  box-shadow: none;
+}
+
+/* ---- Toggle (left part of the pill) ---- */
+.calendar-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 14px 8px 12px;
+  font: inherit;
+  font-weight: 700;
+  font-size: 0.95rem;
+  line-height: 1.2;
+  text-align: left;
+  color: var(--navy-900);
+  background: transparent;
+  border: 0;
+  border-radius: 999px 0 0 999px;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.calendar-toggle:hover { background: var(--gold-100); }
+
+/* Keyboard focus: a high-contrast navy ring drawn just inside each
+   part of the pill, so it doesn't merge with the pill's navy border */
+.calendar-toggle:focus-visible,
+.calendar-pill-action:focus-visible {
+  outline: 3px solid var(--navy-900);
+  outline-offset: -5px;
+}
+/* On a navy-filled button, switch the ring to white */
+.calendar-pill-action:hover:focus-visible,
+.calendar-pill-add[open] > .calendar-pill-action:focus-visible {
+  outline-color: var(--white);
+}
+.calendar-menu-link:focus-visible {
+  outline: 3px solid var(--navy-900);
+  outline-offset: -1px;
+}
+
+/* Without JavaScript the toggle is just a label */
+.calendar-toggle:disabled { cursor: default; }
+.calendar-toggle:disabled:hover { background: transparent; }
+
+/* The colour dot doubles as a checkbox: filled with a tick when on */
+.calendar-toggle .legend-dot {
+  position: relative;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s ease, box-shadow 0.15s ease;
+}
+.calendar-toggle[aria-pressed="true"] .legend-dot::after {
+  content: "";
+  width: 5px;
+  height: 10px;
+  margin-top: -2px;
+  border: solid var(--navy-900);
+  border-width: 0 2.5px 2.5px 0;
+  transform: rotate(45deg);
+}
+.calendar-toggle[aria-pressed="true"] .legend-dot-aps::after { border-color: var(--white); }
+
+.calendar-toggle[aria-pressed="false"] { color: var(--ink-soft); }
+.calendar-toggle[aria-pressed="false"]:hover { background: var(--cream-100); }
+.calendar-toggle[aria-pressed="false"] .legend-dot-pto {
+  background: transparent;
+  box-shadow: inset 0 0 0 2.5px #f6bf26;
+}
+.calendar-toggle[aria-pressed="false"] .legend-dot-aps {
+  background: transparent;
+  box-shadow: inset 0 0 0 2.5px #3f51b5;
+}
+.calendar-toggle[aria-pressed="false"] .calendar-toggle-label {
+  text-decoration: line-through;
+  text-decoration-thickness: 1.5px;
+}
+
+/* ---- Add / open buttons (right part of the pill) ---- */
+.calendar-pill-add { display: flex; }
+
+.calendar-pill-action {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  color: var(--navy-800);
+  text-decoration: none;
+  list-style: none;
+  border-left: 1px solid rgba(22, 33, 92, 0.15);
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.calendar-pill-action::-webkit-details-marker { display: none; }
+.calendar-pill-action .calendar-icon { width: 18px; height: 18px; }
+.calendar-pill > .calendar-pill-action:last-child {
+  width: 46px;
+  padding-right: 2px;
+  border-radius: 0 999px 999px 0;
+}
+.calendar-pill-action:hover,
+.calendar-pill-add[open] > .calendar-pill-action {
+  background: var(--navy-800);
+  color: var(--white);
+}
+
+/* ---- Add-to-calendar dropdown ---- */
+.calendar-pill-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: -2px;
+  z-index: 20;
+  width: max-content;
+  min-width: calc(100% + 4px);
+  max-width: min(320px, calc(100vw - 48px));
+  padding: 14px;
+  background: var(--white);
+  border: 1px solid rgba(22, 33, 92, 0.12);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lift);
+  font-size: 0.9rem;
+}
+
+.calendar-pill-menu-title {
+  margin: 0 0 6px;
+  font-weight: 700;
+  color: var(--navy-900);
+}
+
+.calendar-pill-menu ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.calendar-menu-link {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 9px 10px;
+  margin: 0 -4px;
+  font-weight: 700;
+  text-decoration: none;
+  color: var(--navy-800);
+  border-radius: var(--radius-sm);
+  transition: background 0.15s ease;
+}
+.calendar-menu-link:hover { background: var(--gold-100); }
+
+.calendar-pill-menu-note {
+  margin: 8px 0 0;
+  padding-top: 8px;
+  border-top: 1px solid rgba(22, 33, 92, 0.1);
+  font-size: 0.8rem;
+  line-height: 1.4;
+  color: var(--ink-soft);
+}
+
+.calendar-toggle-hint {
+  margin: 0 0 20px;
+  font-size: 0.85rem;
+  color: var(--ink-soft);
+}
+
+@media (max-width: 720px) {
+  .calendar-card .calendar-legend {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .calendar-pill { display: flex; }
+  .calendar-toggle { flex: 1; }
+  .calendar-pill-menu {
+    right: -2px;
+    width: auto;
+    max-width: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .calendar-pill,
+  .calendar-toggle,
+  .calendar-pill-action,
+  .calendar-menu-link,
+  .calendar-toggle .legend-dot { transition: none; }
+}
+</style><section class="calendar-section wrap" id="calendar">
       <div class="calendar-card">
-        <div class="calendar-card-head">
-          <div>
-            <h2>PTO Calendar</h2>
-            <p>Bishop PTO events and Arlington Public Schools dates, together in one place.</p>
+        
+
+        <div class="calendar-legend" role="group" aria-label="Calendars" data-calendar-toggles="">
+          <div class="calendar-pill" role="group" aria-label="Bishop PTO">
+            <button type="button" class="calendar-toggle" aria-pressed="true" disabled="" data-calendar="f2bd9435d3a5343285c84922cdcbc149eb9737742fb4d605b3198105c77fdaf5@group.calendar.google.com" data-color="#F6BF26"><span class="legend-dot legend-dot-pto" aria-hidden="true"></span><span class="calendar-toggle-label">Bishop PTO</span></button>
+            <details class="calendar-pill-add">
+              <summary class="calendar-pill-action" title="Add Bishop PTO to my calendar"><svg class="calendar-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4M12 13v5M9.5 15.5h5"/></svg><span class="calendar-sr-only">Add Bishop PTO to my calendar</span></summary>
+              <div class="calendar-pill-menu">
+                <p class="calendar-pill-menu-title">Add Bishop PTO to…</p>
+                <ul>
+                  <li><a class="calendar-menu-link" href="https://calendar.google.com/calendar/u/0?cid=ZjJiZDk0MzVkM2E1MzQzMjg1Yzg0OTIyY2RjYmMxNDllYjk3Mzc3NDJmYjRkNjA1YjMxOTgxMDVjNzdmZGFmNUBncm91cC5jYWxlbmRhci5nb29nbGUuY29t" target="_blank" rel="noopener noreferrer">Google Calendar<span class="calendar-sr-only"> (opens in a new window)</span><svg class="calendar-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg></a></li>
+                  <li><a class="calendar-menu-link" href="webcal://calendar.google.com/calendar/ical/f2bd9435d3a5343285c84922cdcbc149eb9737742fb4d605b3198105c77fdaf5%40group.calendar.google.com/public/basic.ics">Apple, Outlook &amp; others</a></li>
+                  <li><a class="calendar-menu-link" href="https://calendar.google.com/calendar/ical/f2bd9435d3a5343285c84922cdcbc149eb9737742fb4d605b3198105c77fdaf5%40group.calendar.google.com/public/basic.ics">Download .ics file</a></li>
+                </ul>
+                <p class="calendar-pill-menu-note">Subscribing keeps new events up to date. A downloaded .ics file is a one-time copy.</p>
+              </div>
+            </details>
+            <a class="calendar-pill-action" href="https://calendar.google.com/calendar/embed?src=f2bd9435d3a5343285c84922cdcbc149eb9737742fb4d605b3198105c77fdaf5%40group.calendar.google.com&amp;color=%23F6BF26&amp;ctz=America%2FNew_York" target="_blank" rel="noopener noreferrer" title="Open Bishop PTO calendar in a new window"><svg class="calendar-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg><span class="calendar-sr-only">Open Bishop PTO calendar in a new window</span></a>
+          </div>
+          <div class="calendar-pill" role="group" aria-label="Arlington Public Schools">
+            <button type="button" class="calendar-toggle" aria-pressed="true" disabled="" data-calendar="f13c28ca759094863d82a8c44116377969d0b8aaf567426be03812a99fc61fd4@group.calendar.google.com" data-color="#3F51B5"><span class="legend-dot legend-dot-aps" aria-hidden="true"></span><span class="calendar-toggle-label">Arlington Public Schools</span></button>
+            <details class="calendar-pill-add">
+              <summary class="calendar-pill-action" title="Add Arlington Public Schools to my calendar"><svg class="calendar-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4M12 13v5M9.5 15.5h5"/></svg><span class="calendar-sr-only">Add Arlington Public Schools to my calendar</span></summary>
+              <div class="calendar-pill-menu">
+                <p class="calendar-pill-menu-title">Add Arlington Public Schools to…</p>
+                <ul>
+                  <li><a class="calendar-menu-link" href="https://calendar.google.com/calendar/u/0?cid=ZjEzYzI4Y2E3NTkwOTQ4NjNkODJhOGM0NDExNjM3Nzk2OWQwYjhhYWY1Njc0MjZiZTAzODEyYTk5ZmM2MWZkNEBncm91cC5jYWxlbmRhci5nb29nbGUuY29t" target="_blank" rel="noopener noreferrer">Google Calendar<span class="calendar-sr-only"> (opens in a new window)</span><svg class="calendar-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg></a></li>
+                  <li><a class="calendar-menu-link" href="webcal://calendar.google.com/calendar/ical/f13c28ca759094863d82a8c44116377969d0b8aaf567426be03812a99fc61fd4%40group.calendar.google.com/public/basic.ics">Apple, Outlook &amp; others</a></li>
+                  <li><a class="calendar-menu-link" href="https://calendar.google.com/calendar/ical/f13c28ca759094863d82a8c44116377969d0b8aaf567426be03812a99fc61fd4%40group.calendar.google.com/public/basic.ics">Download .ics file</a></li>
+                </ul>
+                <p class="calendar-pill-menu-note">Subscribing keeps new events up to date. A downloaded .ics file is a one-time copy.</p>
+              </div>
+            </details>
+            <a class="calendar-pill-action" href="https://calendar.google.com/calendar/embed?src=f13c28ca759094863d82a8c44116377969d0b8aaf567426be03812a99fc61fd4%40group.calendar.google.com&amp;color=%233F51B5&amp;ctz=America%2FNew_York" target="_blank" rel="noopener noreferrer" title="Open Arlington Public Schools calendar in a new window"><svg class="calendar-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg><span class="calendar-sr-only">Open Arlington Public Schools calendar in a new window</span></a>
           </div>
         </div>
-
-        <ul class="calendar-legend">
-          <li>
-            <a href="https://calendar.google.com/calendar/u/0?cid=ZjJiZDk0MzVkM2E1MzQzMjg1Yzg0OTIyY2RjYmMxNDllYjk3Mzc3NDJmYjRkNjA1YjMxOTgxMDVjNzdmZGFmNUBncm91cC5jYWxlbmRhci5nb29nbGUuY29t" target="_blank" rel="noopener noreferrer">
-              <span class="legend-dot legend-dot-pto"></span> Bishop PTO
-            </a>
-          </li>
-          <li>
-            <a href="https://calendar.google.com/calendar/u/0?cid=ZjEzYzI4Y2E3NTkwOTQ4NjNkODJhOGM0NDExNjM3Nzk2OWQwYjhhYWY1Njc0MjZiZTAzODEyYTk5ZmM2MWZkNEBncm91cC5jYWxlbmRhci5nb29nbGUuY29t" target="_blank" rel="noopener noreferrer">
-              <span class="legend-dot legend-dot-aps"></span> Arlington Public Schools
-            </a>
-          </li>
-        </ul>
+        <p class="calendar-toggle-hint" hidden="">Click a calendar name to show or hide its events (at least one stays on). Use the calendar-plus button to add it to your own calendar app, or the arrow to open it in a new window.</p>
 
         <div class="calendar-embed">
-          <iframe src="https://calendar.google.com/calendar/embed?src=f2bd9435d3a5343285c84922cdcbc149eb9737742fb4d605b3198105c77fdaf5%40group.calendar.google.com&amp;color=%23F6BF26&amp;src=f13c28ca759094863d82a8c44116377969d0b8aaf567426be03812a99fc61fd4%40group.calendar.google.com&amp;color=%233F51B5&amp;ctz=America%2FNew_York&amp;mode=MONTH&amp;showTitle=0&amp;showPrint=0&amp;showTabs=0&amp;showCalendars=0&amp;showTz=0&amp;bgcolor=%23FFFFFF" title="Bishop PTO and Arlington Public Schools events calendar" loading="lazy" frameborder="0" scrolling="no" width="100%" height="600"></iframe>
+          <iframe src="https://calendar.google.com/calendar/embed?src=f2bd9435d3a5343285c84922cdcbc149eb9737742fb4d605b3198105c77fdaf5%40group.calendar.google.com&amp;color=%23F6BF26&amp;src=f13c28ca759094863d82a8c44116377969d0b8aaf567426be03812a99fc61fd4%40group.calendar.google.com&amp;color=%233F51B5&amp;ctz=America%2FNew_York&amp;mode=MONTH&amp;showTitle=0&amp;showPrint=0&amp;showTabs=0&amp;showCalendars=0&amp;showTz=0&amp;bgcolor=%23FFFFFF" title="Bishop PTO and Arlington Public Schools events calendar" loading="lazy" frameborder="0" scrolling="no" width="100%" height="600" data-calendar-frame=""></iframe>
         </div>
+
+        
       </div>
-    </section>
+    </section><script src="js/calendar.js" defer=""></script>
 
     <section class="content-grid wrap" id="events">
 

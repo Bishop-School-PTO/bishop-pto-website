@@ -461,7 +461,7 @@ a { color: inherit; }
 }
 
 /* ---------------------------------------------------
-   Calendar
+   Calendar (pill controls are styled in css/calendar.css)
 --------------------------------------------------- */
 .calendar-section {
   padding-top: 40px;
@@ -476,41 +476,13 @@ a { color: inherit; }
   border: 1px solid rgba(22, 33, 92, 0.06);
 }
 
-.calendar-card-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  margin-bottom: 20px;
-  flex-wrap: wrap;
-}
-
-.calendar-card-head h2 { margin-bottom: 4px; }
-.calendar-card-head p { margin: 0; color: var(--ink-soft); }
-
 .calendar-legend {
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
-  list-style: none;
   margin: 0 0 18px;
   padding: 0;
 }
-
-.calendar-legend a {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  text-decoration: none;
-  font-weight: 700;
-  font-size: 0.88rem;
-  color: var(--navy-800);
-  background: var(--cream-100);
-  padding: 7px 14px 7px 10px;
-  border-radius: 999px;
-  transition: background 0.15s ease;
-}
-.calendar-legend a:hover { background: var(--gold-100); }
 
 .legend-dot {
   width: 11px;
@@ -532,8 +504,12 @@ a { color: inherit; }
 .calendar-embed iframe {
   display: block;
   width: 100%;
-  min-width: 600px;
   height: 600px;
+}
+
+/* The month grid needs room; phones get the list view, which fits any width */
+@media (min-width: 721px) {
+  .calendar-embed iframe { min-width: 600px; }
 }
 
 @media (max-width: 720px) {
@@ -604,11 +580,13 @@ a { color: inherit; }
 }
 
 @media (max-width: 720px) {
+  /* Shorter sticky header so it takes less of the screen */
+  .header-bar { height: 62px; }
   .nav-toggle { display: flex; }
 
   .primary-nav {
     position: absolute;
-    top: 76px;
+    top: 62px;
     left: 0;
     right: 0;
     background: var(--cream-50);
@@ -626,6 +604,15 @@ a { color: inherit; }
   .primary-nav li { border-bottom: 1px solid rgba(22, 33, 92, 0.06); }
   .primary-nav a { display: block; padding: 14px 4px; }
   .nav-cta { display: inline-block; margin: 12px 4px 4px; }
+
+  /* Tighter card padding gives content more width */
+  .card,
+  .calendar-card { padding: 18px; }
+
+  /* Smaller gaps between sections */
+  .content-grid,
+  .quick-links,
+  .page-section { padding-bottom: 44px; }
 
   .calendar-section { padding-top: 24px; }
   .quick-links-grid { grid-template-columns: repeat(2, 1fr); }

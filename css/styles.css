@@ -6,9 +6,9 @@
   --navy-800: #1e2c74;
   --navy-700: #2b3d92;
   --navy-600: #3b4fb0;
-  --gold-500: #f4c53f;
-  --gold-400: #f8d76b;
-  --gold-100: #fef3d6;
+  --gold-500: #f3cd0e;
+  --gold-400: #f6d946;
+  --gold-100: #fef7d2;
   --cream-100: #fffaf0;
   --cream-50: #fffdf8;
   --ink: #22264a;
@@ -111,7 +111,7 @@ a { color: inherit; }
 --------------------------------------------------- */
 .site-banner {
   --banner-bg: var(--gold-100);
-  --banner-line: rgba(244, 197, 63, 0.5);
+  --banner-line: rgba(243, 205, 14, 0.5);
   --banner-ink: var(--navy-800);
   background: var(--banner-bg);
   border-bottom: 1px solid var(--banner-line);
@@ -452,7 +452,7 @@ a { color: inherit; }
 
 .card-donate {
   background: linear-gradient(160deg, var(--gold-100), var(--cream-100));
-  border-color: rgba(244, 197, 63, 0.4);
+  border-color: rgba(243, 205, 14, 0.4);
 }
 
 .suggested-amount {

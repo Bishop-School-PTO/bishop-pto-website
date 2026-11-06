@@ -127,7 +127,7 @@ html.pe-collapsed .pe-pagepick-wrap { display: none; }
   gap: 6px;
   padding: 8px 10px 10px;
   border: 1px solid var(--pe-line);
-  border-left: 4px solid #f4c53f;
+  border-left: 4px solid #f3cd0e;
   border-radius: 8px;
 }
 .pe-banner--alert { border-left-color: #b42318; }

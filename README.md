@@ -121,6 +121,9 @@ The PR is opened by the site's bot (`<app-name>[bot]`) from a branch in this rep
 
 ### Maintenance
 
+- **Keeping content current.** Time-limited items (home "Happening now" cards, event rows, event details) carry
+  `data-until="YYYY-MM-DD"`: the last day they're relevant. Find stale ones with `grep -n data-until *.html` and
+  remove or update them once that date has passed. The same goes for the banners at the top of every page.
 - Nothing expires: the App's private key and client secret don't, and installation tokens are minted per use.
   Rotate them in the App's settings if they're ever exposed, then update the script properties.
 - Updating the relay code: paste it and create a new deployment version (Deploy → Manage deployments).

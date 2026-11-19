@@ -66,6 +66,18 @@ a { color: inherit; }
 }
 .skip-link:focus { left: 0; }
 
+.visually-hidden {
+  position: absolute !important;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 /* ---------------------------------------------------
    Buttons
 --------------------------------------------------- */
@@ -586,29 +598,9 @@ a { color: inherit; }
 .page-hero p { margin: 0; font-size: 1.1rem; max-width: 70ch; }
 .page-hero a { color: var(--gold-400); font-weight: 700; }
 
-/* Home welcome */
-.welcome { padding-top: 40px; padding-bottom: 32px; }
-.welcome-card {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 28px;
-  background: var(--navy-900);
-  color: rgba(255, 255, 255, 0.85);
-  border-radius: var(--radius-lg);
-  padding: 36px 40px;
-  box-shadow: var(--shadow-lift);
-}
-.welcome-card h1 { color: var(--white); font-size: 2.3rem; }
-.welcome-card p { margin: 0; max-width: 60ch; }
-.welcome-actions { display: flex; flex-wrap: wrap; gap: 12px; }
-
-.welcome-give { flex: 0 0 300px; }
-.welcome-give .btn { margin-bottom: 12px; }
-.welcome-give p { font-size: 0.85rem; color: rgba(255, 255, 255, 0.7); }
-.welcome-give a:not(.btn) { color: var(--gold-400); font-weight: 700; }
-
+/* Home */
 .home-section { padding-bottom: 40px; }
+.home-section--first { padding-top: 40px; }
 .home-section > h2 { font-size: 1.6rem; }
 
 .now-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
@@ -616,7 +608,10 @@ a { color: inherit; }
 .now-card h3 { margin: 12px 0 6px; font-size: 1.3rem; }
 .now-card .card-actions { margin-top: auto; }
 
-.task-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+/* Task cards: 5 cards laid out 3 + 2 on a 6-column grid so no row has a gap */
+.task-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 16px; }
+.task-grid > .task { grid-column: span 2; }
+.task-grid > .task:nth-child(n+4) { grid-column: span 3; }
 .task {
   display: flex;
   align-items: center;
@@ -630,6 +625,11 @@ a { color: inherit; }
   transition: transform 0.15s ease, background 0.15s ease;
 }
 .task:hover { transform: translateY(-3px); background: var(--gold-100); }
+.task--donate {
+  background: var(--gold-100);
+  border-color: rgba(244, 197, 63, 0.6);
+}
+.task--donate:hover { background: var(--gold-400); }
 .task-icon {
   width: 48px;
   height: 48px;
@@ -652,6 +652,7 @@ a { color: inherit; }
 .task-text { display: flex; flex-direction: column; }
 .task-text strong { font-family: var(--font-display); color: var(--navy-900); font-size: 1.05rem; line-height: 1.2; }
 .task-text span { color: var(--ink-soft); font-size: 0.85rem; line-height: 1.35; margin-top: 2px; }
+.task--donate .task-text span { color: var(--ink); }
 
 .crumb { margin: 0 0 6px !important; font-size: 0.9rem !important; }
 .crumb a { text-decoration: none; }
@@ -776,9 +777,13 @@ a.card-tag:hover { background: var(--gold-400); }
 --------------------------------------------------- */
 @media (max-width: 860px) {
   .content-grid { grid-template-columns: 1fr; }
-  .card-grid--3, .doc-years, .now-grid, .task-grid { grid-template-columns: 1fr 1fr; }
-  .welcome-give { flex-basis: auto; }
-  .welcome-card { flex-direction: column; align-items: flex-start; }
+  .card-grid--3, .doc-years, .now-grid { grid-template-columns: 1fr 1fr; }
+
+  /* Task cards: 2 columns, with the odd last card spanning the full row */
+  .task-grid { grid-template-columns: 1fr 1fr; }
+  .task-grid > .task,
+  .task-grid > .task:nth-child(n+4) { grid-column: auto; }
+  .task-grid > .task:last-child:nth-child(odd) { grid-column: 1 / -1; }
 }
 
 @media (max-width: 1000px) {
@@ -810,12 +815,12 @@ a.card-tag:hover { background: var(--gold-400); }
   .calendar-section { padding-top: 24px; }
   .card-grid, .card-grid--3, .doc-years, .quick-forms, .now-grid { grid-template-columns: 1fr; }
   .page-hero { padding: 36px 0 28px; }
-  .page-hero h1, .welcome-card h1 { font-size: 2rem; }
-  .welcome-card { padding: 28px; }
+  .page-hero h1 { font-size: 2rem; }
 }
 
 @media (max-width: 480px) {
   .footer-nav { grid-template-columns: 1fr; }
   .task-grid { grid-template-columns: 1fr; }
+  .task-grid > .task:last-child:nth-child(odd) { grid-column: auto; }
   .footer-inner { flex-direction: column; text-align: center; }
 }
